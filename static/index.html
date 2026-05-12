@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинский центр — Вход</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 40px; width: 400px; }
+    .logo { text-align: center; margin-bottom: 30px; }
+    .logo h1 { color: #2563eb; font-size: 24px; }
+    .logo p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+    .tabs { display: flex; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; }
+    .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #6b7280; font-weight: 500; transition: all 0.2s; }
+    .tab.active { color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 14px; color: #374151; margin-bottom: 6px; font-weight: 500; }
+    input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; transition: border 0.2s; }
+    input:focus { border-color: #2563eb; }
+    button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #1d4ed8; }
+    .msg { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 14px; text-align: center; display: none; }
+    .msg.success { background: #d1fae5; color: #065f46; display: block; }
+    .msg.error { background: #fee2e2; color: #991b1b; display: block; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>🏥 МедЦентр</h1>
+    <p>Система управления медицинскими услугами</p>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('login')">Вход</div>
+    <div class="tab" onclick="showTab('register')">Регистрация</div>
+  </div>
+
+  <!-- Вход -->
+  <div id="loginForm">
+    <div class="form-group">
+      <label>Имя пользователя</label>
+      <input type="text" id="loginUsername" placeholder="Введите логин">
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="loginPassword" placeholder="Введите пароль">
+    </div>
+    <button onclick="login()">Войти</button>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+
+  <!-- Регистрация -->
+  <div id="registerForm" class="hidden">
+    <div class="form-group">
+      <label>Имя пользователя</label>
+      <input type="text" id="regUsername" placeholder="Придумайте логин">
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="regPassword" placeholder="Придумайте пароль">
+    </div>
+    <button onclick="register()">Зарегистрироваться</button>
+    <div id="registerMsg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+  function showTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register')));
+    document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+    document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+  }
+
+  async function login() {
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const msg = document.getElementById('loginMsg');
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msg.className = 'msg success';
+        msg.textContent = 'Вход выполнен! Переходим...';
+        setTimeout(() => window.location.href = '/static/patients.html', 1000);
+      } else {
+        msg.className = 'msg error';
+        msg.textContent = data.detail || 'Ошибка входа';
+      }
+    } catch (e) {
+      msg.className = 'msg error';
+      msg.textContent = 'Ошибка соединения с сервером';
+    }
+  }
+
+  async function register() {
+    const username = document.getElementById('regUsername').value;
+    const password = document.getElementById('regPassword').value;
+    const msg = document.getElementById('registerMsg');
+    try {
+      const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msg.className = 'msg success';
+        msg.textContent = 'Аккаунт создан! Теперь войдите.';
+        showTab('login');
+      } else {
+        msg.className = 'msg error';
+        msg.textContent = data.detail || 'Ошибка регистрации';
+      }
+    } catch (e) {
+      msg.className = 'msg error';
+      msg.textContent = 'Ошибка соединения с сервером';
+    }
+  }
+</script>
+</body>
+</html>

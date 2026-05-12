@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>МедЦентр — Записи на приём</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; }
+    header { background: #2563eb; color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 20px; }
+    nav { display: flex; gap: 8px; }
+    nav a { color: rgba(255,255,255,0.8); text-decoration: none; padding: 7px 14px; border-radius: 6px; font-size: 14px; }
+    nav a:hover, nav a.active { background: rgba(255,255,255,0.2); color: white; }
+    .logout { background: rgba(255,255,255,0.2); border: none; color: white; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .container { max-width: 1200px; margin: 32px auto; padding: 0 20px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .top-bar h2 { font-size: 22px; color: #1f2937; }
+    .btn-add { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    table { width: 100%; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); border-collapse: collapse; }
+    th { background: #f8fafc; padding: 14px 16px; text-align: left; font-size: 13px; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 14px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9fafb; }
+    .status-select { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; outline: none; }
+    .status-select.SCHEDULED { background: #dbeafe; color: #1d4ed8; }
+    .status-select.COMPLETED { background: #d1fae5; color: #065f46; }
+    .status-select.CANCELLED { background: #fee2e2; color: #991b1b; }
+    .btn-del { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 100; }
+    .modal-bg.show { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 32px; width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 18px; color: #1f2937; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: #374151; margin-bottom: 5px; font-weight: 500; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: #2563eb; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 1; background: #2563eb; color: white; border: none; padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #f3f4f6; color: #374151; border: none; padding: 11px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .empty { text-align: center; padding: 40px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🏥 МедЦентр</h1>
+  <nav>
+    <a href="/static/patients.html">Пациенты</a>
+    <a href="/static/doctors.html">Врачи</a>
+    <a href="/static/services.html">Услуги</a>
+    <a href="/static/appointments.html" class="active">Записи</a>
+  </nav>
+  <button class="logout" onclick="logout()">Выйти</button>
+</header>
+
+<div class="container">
+  <div class="top-bar">
+    <h2>Записи на приём</h2>
+    <button class="btn-add" onclick="openModal()">+ Записать на приём</button>
+  </div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Пациент</th><th>Врач</th><th>Услуга</th><th>Дата и время</th><th>Статус</th><th>Примечания</th><th></th></tr>
+    </thead>
+    <tbody id="tbody"><tr><td colspan="8" class="empty">Загрузка...</td></tr></tbody>
+  </table>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Новая запись на приём</h3>
+    <div class="form-group"><label>Пациент *</label><select id="f_patient"><option value="">— Выберите пациента —</option></select></div>
+    <div class="form-group"><label>Врач *</label><select id="f_doctor"><option value="">— Выберите врача —</option></select></div>
+    <div class="form-group"><label>Услуга *</label><select id="f_service"><option value="">— Выберите услугу —</option></select></div>
+    <div class="form-group"><label>Дата и время *</label><input id="f_date" type="datetime-local"></div>
+    <div class="form-group"><label>Статус</label>
+      <select id="f_status">
+        <option value="SCHEDULED">Запланировано</option>
+        <option value="COMPLETED">Завершено</option>
+        <option value="CANCELLED">Отменено</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Примечания</label><textarea id="f_notes" rows="2" placeholder="Первичный приём..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="save()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const statusLabels = { SCHEDULED: 'Запланировано', COMPLETED: 'Завершено', CANCELLED: 'Отменено' };
+  let patients = [], doctors = [], services = [];
+
+  async function load() {
+    const res = await fetch('/appointments/');
+    if (res.status === 401) { window.location.href = '/static/index.html'; return; }
+    const data = await res.json();
+    const tbody = document.getElementById('tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Записей пока нет</td></tr>'; return; }
+    const pm = Object.fromEntries(patients.map(p => [p.id, p.full_name]));
+    const dm = Object.fromEntries(doctors.map(d => [d.id, d.full_name]));
+    const sm = Object.fromEntries(services.map(s => [s.id, s.name]));
+    tbody.innerHTML = data.map(a => `<tr>
+      <td>${a.id}</td>
+      <td>${pm[a.patient_id] || 'ID:'+a.patient_id}</td>
+      <td>${dm[a.doctor_id] || 'ID:'+a.doctor_id}</td>
+      <td>${sm[a.service_id] || 'ID:'+a.service_id}</td>
+      <td>${a.appointment_date || '—'}</td>
+      <td>
+        <select class="status-select ${a.status}" onchange="changeStatus(${a.id}, this)">
+          <option value="SCHEDULED" ${a.status==='SCHEDULED'?'selected':''}>Запланировано</option>
+          <option value="COMPLETED" ${a.status==='COMPLETED'?'selected':''}>Завершено</option>
+          <option value="CANCELLED" ${a.status==='CANCELLED'?'selected':''}>Отменено</option>
+        </select>
+      </td>
+      <td>${a.notes || '—'}</td>
+      <td><button class="btn-del" onclick="del(${a.id})">Удалить</button></td>
+    </tr>`).join('');
+  }
+
+  async function loadSelects() {
+    [patients, doctors, services] = await Promise.all([
+      fetch('/patients/').then(r => r.json()),
+      fetch('/doctors/').then(r => r.json()),
+      fetch('/services/').then(r => r.json()),
+    ]);
+    document.getElementById('f_patient').innerHTML = '<option value="">— Выберите пациента —</option>' + patients.map(p => `<option value="${p.id}">${p.full_name}</option>`).join('');
+    document.getElementById('f_doctor').innerHTML = '<option value="">— Выберите врача —</option>' + doctors.map(d => `<option value="${d.id}">${d.full_name} (${d.specialty || ''})</option>`).join('');
+    document.getElementById('f_service').innerHTML = '<option value="">— Выберите услугу —</option>' + services.map(s => `<option value="${s.id}">${s.name} — ${s.price ? s.price+'₽' : ''}</option>`).join('');
+  }
+
+  async function openModal() { await loadSelects(); document.getElementById('modal').classList.add('show'); }
+  function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+  async function save() {
+    const dt = document.getElementById('f_date').value.replace('T', ' ') + ':00';
+    const body = {
+      patient_id: parseInt(document.getElementById('f_patient').value),
+      doctor_id: parseInt(document.getElementById('f_doctor').value),
+      service_id: parseInt(document.getElementById('f_service').value),
+      appointment_date: dt,
+      status: document.getElementById('f_status').value,
+      notes: document.getElementById('f_notes').value || null,
+    };
+    if (!body.patient_id || !body.doctor_id || !body.service_id) { alert('Выберите пациента, врача и услугу'); return; }
+    const res = await fetch('/appointments/', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (res.ok) { closeModal(); load(); } else alert('Ошибка при сохранении');
+  }
+
+  async function changeStatus(id, select) {
+    const a = await (await fetch('/appointments/'+id)).json();
+    const body = { ...a, status: select.value };
+    await fetch('/appointments/'+id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    select.className = 'status-select ' + select.value;
+  }
+
+  async function del(id) { if (!confirm('Удалить запись?')) return; await fetch('/appointments/'+id, {method:'DELETE'}); load(); }
+  async function logout() { await fetch('/auth/logout', {method:'POST'}); window.location.href = '/static/index.html'; }
+
+  Promise.all([
+    fetch('/patients/').then(r => r.json()).then(d => patients = d),
+    fetch('/doctors/').then(r => r.json()).then(d => doctors = d),
+    fetch('/services/').then(r => r.json()).then(d => services = d),
+  ]).then(load);
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>МедЦентр — Услуги</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; }
+    header { background: #2563eb; color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 20px; }
+    nav { display: flex; gap: 8px; }
+    nav a { color: rgba(255,255,255,0.8); text-decoration: none; padding: 7px 14px; border-radius: 6px; font-size: 14px; }
+    nav a:hover, nav a.active { background: rgba(255,255,255,0.2); color: white; }
+    .logout { background: rgba(255,255,255,0.2); border: none; color: white; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .container { max-width: 1100px; margin: 32px auto; padding: 0 20px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .top-bar h2 { font-size: 22px; color: #1f2937; }
+    .btn-add { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    table { width: 100%; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); border-collapse: collapse; }
+    th { background: #f8fafc; padding: 14px 16px; text-align: left; font-size: 13px; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 14px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9fafb; }
+    .price { font-weight: 700; color: #059669; }
+    .btn-del { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 100; }
+    .modal-bg.show { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 32px; width: 480px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 18px; color: #1f2937; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: #374151; margin-bottom: 5px; font-weight: 500; }
+    input, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; }
+    input:focus, textarea:focus { border-color: #2563eb; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 1; background: #2563eb; color: white; border: none; padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #f3f4f6; color: #374151; border: none; padding: 11px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .empty { text-align: center; padding: 40px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🏥 МедЦентр</h1>
+  <nav>
+    <a href="/static/patients.html">Пациенты</a>
+    <a href="/static/doctors.html">Врачи</a>
+    <a href="/static/services.html" class="active">Услуги</a>
+    <a href="/static/appointments.html">Записи</a>
+  </nav>
+  <button class="logout" onclick="logout()">Выйти</button>
+</header>
+
+<div class="container">
+  <div class="top-bar">
+    <h2>Услуги</h2>
+    <button class="btn-add" onclick="openModal()">+ Добавить услугу</button>
+  </div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Название</th><th>Описание</th><th>Цена</th><th>Длительность</th><th></th></tr>
+    </thead>
+    <tbody id="tbody"><tr><td colspan="6" class="empty">Загрузка...</td></tr></tbody>
+  </table>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Новая услуга</h3>
+    <div class="form-group"><label>Название *</label><input id="f_name" placeholder="Консультация кардиолога"></div>
+    <div class="form-group"><label>Описание</label><textarea id="f_desc" rows="3" placeholder="Описание услуги..."></textarea></div>
+    <div class="form-group"><label>Цена (₽)</label><input id="f_price" type="number" placeholder="2500"></div>
+    <div class="form-group"><label>Длительность (мин)</label><input id="f_dur" type="number" placeholder="45"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="save()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function load() {
+    const res = await fetch('/services/');
+    if (res.status === 401) { window.location.href = '/static/index.html'; return; }
+    const data = await res.json();
+    const tbody = document.getElementById('tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Услуг пока нет</td></tr>'; return; }
+    tbody.innerHTML = data.map(s => `<tr>
+      <td>${s.id}</td><td><b>${s.name}</b></td><td>${s.description || '—'}</td>
+      <td><span class="price">${s.price ? s.price.toLocaleString('ru') + ' ₽' : '—'}</span></td>
+      <td>${s.duration_minutes ? s.duration_minutes + ' мин' : '—'}</td>
+      <td><button class="btn-del" onclick="del(${s.id})">Удалить</button></td>
+    </tr>`).join('');
+  }
+  function openModal() { document.getElementById('modal').classList.add('show'); }
+  function closeModal() { document.getElementById('modal').classList.remove('show'); }
+  async function save() {
+    const body = { name: document.getElementById('f_name').value, description: document.getElementById('f_desc').value || null, price: parseFloat(document.getElementById('f_price').value) || null, duration_minutes: parseInt(document.getElementById('f_dur').value) || null };
+    if (!body.name) { alert('Введите название'); return; }
+    const res = await fetch('/services/', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (res.ok) { closeModal(); load(); } else alert('Ошибка при сохранении');
+  }
+  async function del(id) { if (!confirm('Удалить услугу?')) return; await fetch('/services/'+id, {method:'DELETE'}); load(); }
+  async function logout() { await fetch('/auth/logout', {method:'POST'}); window.location.href = '/static/index.html'; }
+  load();
+</script>
+</body>
+</html>

@@ -90,6 +90,61 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 | /status | Статус сервера |
 | /errors | Последние 20 ошибок |
 
+## Диаграмма классов
+
+```mermaid
+classDiagram
+    class User {
+        +int id
+        +str username
+        +str password
+        +bool enabled
+        +int role_id
+    }
+    class Role {
+        +int id
+        +str title
+    }
+    class Patient {
+        +int id
+        +str full_name
+        +str birth_date
+        +str phone
+        +str email
+        +str address
+    }
+    class Doctor {
+        +int id
+        +str full_name
+        +str specialty
+        +str phone
+        +str email
+        +int experience_years
+    }
+    class Service {
+        +int id
+        +str name
+        +str description
+        +float price
+        +int duration_minutes
+    }
+    class Appointment {
+        +int id
+        +int patient_id
+        +int doctor_id
+        +int service_id
+        +str appointment_date
+        +str status
+        +str notes
+        +datetime created_at
+    }
+
+    User --> Role : role
+    Appointment --> Patient : patient
+    Appointment --> Doctor : doctor
+    Appointment --> Service : service
+```
+
 ## Структура проекта
 
 ```

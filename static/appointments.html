@@ -32,8 +32,12 @@
     .modal h3 { font-size: 18px; color: #1f2937; margin-bottom: 20px; }
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: 13px; color: #374151; margin-bottom: 5px; font-weight: 500; }
-    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; transition: border 0.2s; }
     input:focus, select:focus { border-color: #2563eb; }
+    select.error, input.error { border-color: #dc2626; background: #fff5f5; }
+    select.ok, input.ok { border-color: #059669; }
+    .err-msg { color: #dc2626; font-size: 12px; margin-top: 4px; display: none; }
+    .err-msg.show { display: block; }
     .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
     .btn-save { flex: 1; background: #2563eb; color: white; border: none; padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
     .btn-cancel { flex: 1; background: #f3f4f6; color: #374151; border: none; padding: 11px; border-radius: 8px; font-size: 15px; cursor: pointer; }
@@ -68,10 +72,10 @@
 <div class="modal-bg" id="modal">
   <div class="modal">
     <h3>Новая запись на приём</h3>
-    <div class="form-group"><label>Пациент *</label><select id="f_patient"><option value="">— Выберите пациента —</option></select></div>
-    <div class="form-group"><label>Врач *</label><select id="f_doctor"><option value="">— Выберите врача —</option></select></div>
-    <div class="form-group"><label>Услуга *</label><select id="f_service"><option value="">— Выберите услугу —</option></select></div>
-    <div class="form-group"><label>Дата и время *</label><input id="f_date" type="datetime-local"></div>
+    <div class="form-group"><label>Пациент *</label><select id="f_patient" onchange="validate()"><option value="">— Выберите пациента —</option></select><div class="err-msg" id="e_patient"></div></div>
+    <div class="form-group"><label>Врач *</label><select id="f_doctor" onchange="validate()"><option value="">— Выберите врача —</option></select><div class="err-msg" id="e_doctor"></div></div>
+    <div class="form-group"><label>Услуга *</label><select id="f_service" onchange="validate()"><option value="">— Выберите услугу —</option></select><div class="err-msg" id="e_service"></div></div>
+    <div class="form-group"><label>Дата и время *</label><input id="f_date" type="datetime-local" onchange="validate()"><div class="err-msg" id="e_date"></div></div>
     <div class="form-group"><label>Статус</label>
       <select id="f_status">
         <option value="SCHEDULED">Запланировано</option>
@@ -129,10 +133,38 @@
     document.getElementById('f_service').innerHTML = '<option value="">— Выберите услугу —</option>' + services.map(s => `<option value="${s.id}">${s.name} — ${s.price ? s.price+'₽' : ''}</option>`).join('');
   }
 
-  async function openModal() { await loadSelects(); document.getElementById('modal').classList.add('show'); }
+  function setErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.toggle('show',!!msg);}
+  function setField(id,ok){const el=document.getElementById(id);el.classList.toggle('error',!ok);el.classList.toggle('ok',ok);}
+  function validate(){
+    let ok=true;
+    const p=document.getElementById('f_patient').value;
+    const d=document.getElementById('f_doctor').value;
+    const s=document.getElementById('f_service').value;
+    const dt=document.getElementById('f_date').value;
+    if(!p){setErr('e_patient','Выберите пациента');setField('f_patient',false);ok=false;}
+    else{setErr('e_patient','');setField('f_patient',true);}
+    if(!d){setErr('e_doctor','Выберите врача');setField('f_doctor',false);ok=false;}
+    else{setErr('e_doctor','');setField('f_doctor',true);}
+    if(!s){setErr('e_service','Выберите услугу');setField('f_service',false);ok=false;}
+    else{setErr('e_service','');setField('f_service',true);}
+    if(!dt){setErr('e_date','Укажите дату и время');setField('f_date',false);ok=false;}
+    else{setErr('e_date','');setField('f_date',true);}
+    return ok;
+  }
+
+  async function openModal() {
+    await loadSelects();
+    document.getElementById('f_date').value='';
+    document.getElementById('f_notes').value='';
+    document.getElementById('f_status').value='SCHEDULED';
+    ['f_patient','f_doctor','f_service','f_date'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='';}});
+    ['e_patient','e_doctor','e_service','e_date'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.classList.remove('show');}});
+    document.getElementById('modal').classList.add('show');
+  }
   function closeModal() { document.getElementById('modal').classList.remove('show'); }
 
   async function save() {
+    if (!validate()) return;
     const dt = document.getElementById('f_date').value.replace('T', ' ') + ':00';
     const body = {
       patient_id: parseInt(document.getElementById('f_patient').value),
@@ -142,7 +174,6 @@
       status: document.getElementById('f_status').value,
       notes: document.getElementById('f_notes').value || null,
     };
-    if (!body.patient_id || !body.doctor_id || !body.service_id) { alert('Выберите пациента, врача и услугу'); return; }
     const res = await fetch('/appointments/', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     if (res.ok) { closeModal(); load(); } else alert('Ошибка при сохранении');
   }

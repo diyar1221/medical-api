@@ -29,8 +29,12 @@
     .modal h3 { font-size: 18px; color: #1f2937; margin-bottom: 20px; }
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: 13px; color: #374151; margin-bottom: 5px; font-weight: 500; }
-    input, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; }
+    input, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; outline: none; font-family: inherit; transition: border 0.2s; }
     input:focus, textarea:focus { border-color: #2563eb; }
+    input.error { border-color: #dc2626; background: #fff5f5; }
+    input.ok { border-color: #059669; }
+    .err-msg { color: #dc2626; font-size: 12px; margin-top: 4px; display: none; }
+    .err-msg.show { display: block; }
     .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
     .btn-save { flex: 1; background: #2563eb; color: white; border: none; padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
     .btn-cancel { flex: 1; background: #f3f4f6; color: #374151; border: none; padding: 11px; border-radius: 8px; font-size: 15px; cursor: pointer; }
@@ -65,10 +69,10 @@
 <div class="modal-bg" id="modal">
   <div class="modal">
     <h3>Новая услуга</h3>
-    <div class="form-group"><label>Название *</label><input id="f_name" placeholder="Консультация кардиолога"></div>
+    <div class="form-group"><label>Название *</label><input id="f_name" placeholder="Консультация кардиолога" oninput="validate()"><div class="err-msg" id="e_name"></div></div>
     <div class="form-group"><label>Описание</label><textarea id="f_desc" rows="3" placeholder="Описание услуги..."></textarea></div>
-    <div class="form-group"><label>Цена (₽)</label><input id="f_price" type="number" placeholder="2500"></div>
-    <div class="form-group"><label>Длительность (мин)</label><input id="f_dur" type="number" placeholder="45"></div>
+    <div class="form-group"><label>Цена (₽)</label><input id="f_price" type="number" placeholder="2500" min="0" oninput="validate()"><div class="err-msg" id="e_price"></div></div>
+    <div class="form-group"><label>Длительность (мин)</label><input id="f_dur" type="number" placeholder="45" min="1" max="480" oninput="validate()"><div class="err-msg" id="e_dur"></div></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-save" onclick="save()">Сохранить</button>
@@ -90,13 +94,32 @@
       <td><button class="btn-del" onclick="del(${s.id})">Удалить</button></td>
     </tr>`).join('');
   }
-  function openModal() { document.getElementById('modal').classList.add('show'); }
-  function closeModal() { document.getElementById('modal').classList.remove('show'); }
-  async function save() {
-    const body = { name: document.getElementById('f_name').value, description: document.getElementById('f_desc').value || null, price: parseFloat(document.getElementById('f_price').value) || null, duration_minutes: parseInt(document.getElementById('f_dur').value) || null };
-    if (!body.name) { alert('Введите название'); return; }
-    const res = await fetch('/services/', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (res.ok) { closeModal(); load(); } else alert('Ошибка при сохранении');
+  function setErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.toggle('show',!!msg);}
+  function setField(id,ok){const el=document.getElementById(id);el.classList.toggle('error',!ok);el.classList.toggle('ok',ok);}
+  function validate(){
+    const name=document.getElementById('f_name').value.trim();
+    const price=document.getElementById('f_price').value;
+    const dur=document.getElementById('f_dur').value;
+    let ok=true;
+    if(!name||name.length<2){setErr('e_name','Введите название услуги');setField('f_name',false);ok=false;}
+    else{setErr('e_name','');setField('f_name',true);}
+    if(price&&parseFloat(price)<0){setErr('e_price','Цена не может быть отрицательной');setField('f_price',false);ok=false;}
+    else{setErr('e_price','');if(price)setField('f_price',true);}
+    if(dur&&(parseInt(dur)<1||parseInt(dur)>480)){setErr('e_dur','Длительность от 1 до 480 минут');setField('f_dur',false);ok=false;}
+    else{setErr('e_dur','');if(dur)setField('f_dur',true);}
+    return ok;
+  }
+  function openModal(){
+    ['f_name','f_desc','f_price','f_dur'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.className='';}});
+    ['e_name','e_price','e_dur'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.classList.remove('show');}});
+    document.getElementById('modal').classList.add('show');
+  }
+  function closeModal(){document.getElementById('modal').classList.remove('show');}
+  async function save(){
+    if(!validate())return;
+    const body={name:document.getElementById('f_name').value.trim(),description:document.getElementById('f_desc').value||null,price:parseFloat(document.getElementById('f_price').value)||null,duration_minutes:parseInt(document.getElementById('f_dur').value)||null};
+    const res=await fetch('/services/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(res.ok){closeModal();load();}else alert('Ошибка при сохранении');
   }
   async function del(id) { if (!confirm('Удалить услугу?')) return; await fetch('/services/'+id, {method:'DELETE'}); load(); }
   async function logout() { await fetch('/auth/logout', {method:'POST'}); window.location.href = '/static/index.html'; }
